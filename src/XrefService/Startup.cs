@@ -25,6 +25,8 @@ namespace XrefService
                 options.LowercaseQueryStrings = true;
             });
 
+            services.AddHttpClient();
+
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {
