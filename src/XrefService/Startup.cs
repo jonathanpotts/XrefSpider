@@ -31,6 +31,7 @@ namespace XrefService
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Xref Service", Version = "v1" });
+                c.EnableAnnotations();
             });
         }
 

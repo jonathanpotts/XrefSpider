@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace XrefService.Models
 {
     /// <summary>
-    /// Xref (cross-reference) data.
+    /// Xref (cross-reference) metadata.
     /// </summary>
     public class Xref
     {
@@ -31,6 +31,12 @@ namespace XrefService.Models
         /// </summary>
         [JsonPropertyName("href")]
         public string HypertextReference { get; set; }
+
+        /// <summary>
+        /// Schema type.
+        /// </summary>
+        [JsonPropertyName("schemaType")]
+        public string SchemaType { get; set; }
 
         /// <summary>
         /// Comment identifier.
