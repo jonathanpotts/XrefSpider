@@ -2,7 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 
-namespace XrefService
+namespace XrefSpider
 {
     /// <summary>
     /// Type maps for value-to-reference type names and vice versa.
