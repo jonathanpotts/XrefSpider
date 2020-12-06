@@ -3,16 +3,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Net;
 using System.Net.Http;
 using XrefSpider.Models;
 using YamlDotNet.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace XrefSpider
 {
     /// <summary>
     /// Spider that crawls the AWS SDK for .NET V3 documentation.
     /// </summary>
-    public class AwsSdkForDotNetV3Spider : ISpider, IDisposable
+    public class AwsSdkForDotNetV3Spider : ISpider
     {
         /// <summary>
         /// AWS SDK for .NET V3 API documentation URL.
@@ -27,7 +29,12 @@ namespace XrefSpider
         /// <summary>
         /// HTTP client.
         /// </summary>
-        private readonly HttpClient _client = new();
+        private readonly HttpClient _client;
+
+        /// <summary>
+        /// Logger.
+        /// </summary>
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Crawled URLs.
@@ -40,9 +47,15 @@ namespace XrefSpider
         private readonly List<Xref> _xrefs = new();
 
         /// <summary>
-        /// Disposed value.
+        /// Creates an instance of the AWS SDK for .NET V3 spider.
         /// </summary>
-        private bool _disposedValue;
+        /// <param name="client">HTTP client.</param>
+        /// <param name="logger">Logger.</param>
+        public AwsSdkForDotNetV3Spider(HttpClient client, ILogger<AwsSdkForDotNetV3Spider> logger)
+        {
+            _client = client;
+            _logger = logger;
+        }
 
         /// <summary>
         /// Crawls the documentation and creates the xref map.
@@ -53,7 +66,7 @@ namespace XrefSpider
             var docsUri = new Uri(_docsUrl);
             var tocUrl = new Uri(docsUri, _tocPage).ToString();
 
-            Console.WriteLine($"Crawling {tocUrl}...");
+            _logger.LogInformation($"Crawling {tocUrl}");
 
             var tocHtml = await _client.GetStringAsync(tocUrl);
             var tocDoc = new HtmlDocument();
@@ -105,9 +118,20 @@ namespace XrefSpider
 
             _crawledUrls.Add(url);
 
-            Console.WriteLine($"Crawling {url}...");
+            _logger.LogInformation($"Crawling {url}");
 
-            var pageHtml = await _client.GetStringAsync(url);
+            var response = await _client.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    return;
+                }
+                
+            }
+
+            var pageHtml = await response.Content.ReadAsStringAsync();
             var pageDoc = new HtmlDocument();
             pageDoc.LoadHtml(pageHtml);
             
@@ -166,32 +190,6 @@ namespace XrefSpider
             };
 
             _xrefs.Add(xref);
-        }
-
-        /// <summary>
-        /// Disposes resources used by this object.
-        /// </summary>
-        /// <param name="disposing">Boolean value determining if the object is being disposed.</param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    _client.Dispose();
-                }
-
-                _disposedValue = true;
-            }
-        }
-
-        /// <summary>
-        /// Disposes resources used by this object.
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
         }
     }
 }
