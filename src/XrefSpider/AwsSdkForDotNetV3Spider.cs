@@ -65,16 +65,15 @@ namespace XrefSpider
                 .Where(x => !string.IsNullOrEmpty(x))
                 .Select(x => new Uri(docsUri, x).ToString());
 
-            HashSet<string> crawledUrls = new();
-            List<Xref> xrefs = new();
-
             foreach (var url in tocUrls)
             {
                 await CrawlPageAsync(url);
             }
 
-            var ser = new SerializerBuilder().Build();
-            var yaml = ser.Serialize(xrefs);
+            var ser = new SerializerBuilder()
+                .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
+                .Build();
+            var yaml = ser.Serialize(_xrefs);
 
             Console.WriteLine();
             Console.Write(yaml);
