@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,6 +16,11 @@ namespace XrefSpider
         private readonly IHostApplicationLifetime _appLifetime;
 
         /// <summary>
+        /// Logger.
+        /// </summary>
+        private readonly ILogger _logger;
+
+        /// <summary>
         /// Spider.
         /// </summary>
         private readonly ISpider _spider;
@@ -24,9 +30,10 @@ namespace XrefSpider
         /// </summary>
         /// <param name="appLifetime">Application lifetime.</param>
         /// <param name="spider">Spider.</param>
-        public Worker(IHostApplicationLifetime appLifetime, ISpider spider)
+        public Worker(IHostApplicationLifetime appLifetime, ILogger<Worker> logger, ISpider spider)
         {
             _appLifetime = appLifetime;
+            _logger = logger;
             _spider = spider;
         }
 

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "XrefSpider": {
+      "commandName": "Project",
+      "commandLineArgs": "--awssdk"
+    }
+  }
+}
