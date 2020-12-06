@@ -1,3 +1,4 @@
-using System;
+using XrefSpider;
 
-Console.WriteLine("XrefSpider");
+using AwsSdkForDotNetV3Spider awsSpider = new();
+await awsSpider.CrawlAsync();
