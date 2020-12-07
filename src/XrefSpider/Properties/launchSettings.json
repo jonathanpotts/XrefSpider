@@ -2,7 +2,7 @@
   "profiles": {
     "XrefSpider": {
       "commandName": "Project",
-      "commandLineArgs": "--awssdk"
+      "commandLineArgs": "--awssdk awssdk.xrefmap.yml"
     }
   }
 }

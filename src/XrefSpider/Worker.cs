@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,14 +11,14 @@ namespace XrefSpider
     public class Worker : IHostedService
     {
         /// <summary>
+        /// Output file name.
+        /// </summary>
+        public static string FileName { get; set; }
+
+        /// <summary>
         /// Application lifetime.
         /// </summary>
         private readonly IHostApplicationLifetime _appLifetime;
-
-        /// <summary>
-        /// Logger.
-        /// </summary>
-        private readonly ILogger _logger;
 
         /// <summary>
         /// Spider.
@@ -30,10 +30,9 @@ namespace XrefSpider
         /// </summary>
         /// <param name="appLifetime">Application lifetime.</param>
         /// <param name="spider">Spider.</param>
-        public Worker(IHostApplicationLifetime appLifetime, ILogger<Worker> logger, ISpider spider)
+        public Worker(IHostApplicationLifetime appLifetime, ISpider spider)
         {
             _appLifetime = appLifetime;
-            _logger = logger;
             _spider = spider;
         }
 
@@ -56,6 +55,10 @@ namespace XrefSpider
         public async Task OnStartedAsync()
         {
             var xrefMap = await _spider.CrawlAsync();
+
+            using var file = File.Create(FileName);
+            using var sw = new StreamWriter(file);
+            await sw.WriteAsync(xrefMap);
 
             _appLifetime.StopApplication();
         }

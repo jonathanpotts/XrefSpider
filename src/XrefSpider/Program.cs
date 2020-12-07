@@ -1,27 +1,30 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Linq;
-using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
 using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace XrefSpider
 {
     public class Program
     {
+        private const string _help =
+            "XrefSpider\n" +
+            "Created by Jonathan Potts (jonathanpotts.com)\n" +
+            "\n" +
+            "Used to crawl API documentation sites to create xref maps to use with DocFX and other consumers.\n" +
+            "\n" +
+            "Usage:\n" +
+            "XrefSpider [--docfx|-d] [--awssdk|-a] output-file\n";
+
         public static async Task Main(string[] args)
         {
-            List<SpiderType> spiders = new();
-
-            if (args.Contains("--docfx") || args.Contains("-d"))
+            if (args.Length == 0 || args.Contains("--help") || args.Contains("-help") || args.Contains("-?"))
             {
-                spiders.Add(SpiderType.DocFX);
-            }
-
-            if (args.Contains("--awssdk") || args.Contains("-a"))
-            {
-                spiders.Add(SpiderType.AwsSdkForDotNetV3);
+                Console.Write(_help);
+                return;
             }
 
             var host = Host.CreateDefaultBuilder(args)
@@ -29,32 +32,73 @@ namespace XrefSpider
                 {
                     var logger = services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
 
-                    if (spiders.Count < 1)
+                    bool spiderSet = false;
+
+                    if (args.Contains("--docfx") && args.Contains("-d"))
                     {
-                        logger.LogError("A spider was not specified.");
+                        logger.LogError("For DocFX, you must specify --docfx or -d but not both.");
                         Environment.Exit(-1);
                     }
-                    else if (spiders.Count > 1)
+                    else if (args.Contains("--docfx") || args.Contains("-d"))
                     {
-                        logger.LogError("Too many spiders were specified.");
+                        if (spiderSet)
+                        {
+                            logger.LogError("There are too many spiders specified.");
+                            Environment.Exit(-1);
+                        }
+
+                        services.AddHttpClient<ISpider, DocFXSpider>();
+                        spiderSet = true;
+                    }
+
+                    if (args.Contains("--awssdk") && args.Contains("-a"))
+                    {
+                        logger.LogError("For AWS SDK for .NET, you must specify --awssdk or -a but not both.");
+                    }
+                    else if (args.Contains("--awssdk") || args.Contains("-a"))
+                    {
+                        if (spiderSet)
+                        {
+                            logger.LogError("There are too many spiders specified.");
+                            Environment.Exit(-1);
+                        }
+
+                        services.AddHttpClient<ISpider, AwsSdkForDotNetV3Spider>();
+                        spiderSet = true;
+                    }
+
+                    try
+                    {
+                        var spider = services.BuildServiceProvider().GetRequiredService<ISpider>();
+                    }
+                    catch (Exception)
+                    {
+                        logger.LogError("There was no spider specified.");
                         Environment.Exit(-1);
                     }
 
-                    var spiderType = spiders.FirstOrDefault();
+                    var fileName = args.SingleOrDefault(x => x is not ("--docfx" or "-d" or "--awssdk" or "-a"));
 
-                    switch (spiderType)
+                    if (fileName is null)
                     {
-                        case SpiderType.DocFX:
-                            services.AddHttpClient<ISpider, DocFXSpider>();
-                            break;
-
-                        case SpiderType.AwsSdkForDotNetV3:
-                            services.AddHttpClient<ISpider, AwsSdkForDotNetV3Spider>();
-                            break;
-
-                        default:
-                            break;
+                        logger.LogError("An output file name was not provided or the argument list is invalid.");
+                        Environment.Exit(-1);
                     }
+
+                    try
+                    {
+                        using var file = File.Create(fileName);
+                        file.Close();
+                        
+                        File.Delete(fileName);
+                    }
+                    catch (Exception)
+                    {
+                        logger.LogError("The output file cannot be written to.");
+                        Environment.Exit(-1);
+                    }
+
+                    Worker.FileName = fileName;
 
                     services.AddHostedService<Worker>();
                 })
