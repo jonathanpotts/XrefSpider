@@ -68,7 +68,15 @@ namespace XrefSpider
 
             _logger.LogInformation($"Crawling {tocUrl}");
 
-            var tocHtml = await _client.GetStringAsync(tocUrl);
+            var response = await _client.GetAsync(tocUrl);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError($"Unable to access table of contents");
+                return null;
+            }
+
+            var tocHtml = await response.Content.ReadAsStringAsync();
             var tocDoc = new HtmlDocument();
             tocDoc.LoadHtml(tocHtml);
             var tocUrls = tocDoc.GetElementbyId("toc")
@@ -191,13 +199,21 @@ namespace XrefSpider
                     methodName = methodName.Substring(0, methodName.IndexOf('('));
                 }
 
+                var parameterNodes = pageDoc.DocumentNode
+                    .Descendants()
+                    .SkipWhile(x => x.Id != "parameters")
+                    .FirstOrDefault()?
+                    .ParentNode
+                    .Descendants("dl")
+                    .Select(x => x.Descendants("dd").First());
+
                 var parameterTypes = pageDoc.DocumentNode
                     .Descendants()
                     .SkipWhile(x => x.Id != "parameters")
                     .FirstOrDefault()?
                     .ParentNode
                     .Descendants("dl")
-                    .Select(x => x.Descendants("dd").First().InnerText.Replace("\n", "")["Type: ".Length..])
+                    .Select(x => x.Descendants("dd").First().InnerText.Split('\n')[1]["Type: ".Length..])
                     ?? Enumerable.Empty<string>();
 
                 var parameterList = string.Join(", ", parameterTypes);
