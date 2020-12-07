@@ -124,8 +124,9 @@ namespace XrefSpider
 
             if (!response.IsSuccessStatusCode)
             {
-                if (response.StatusCode == HttpStatusCode.Forbidden)
+                if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
                 {
+                    _logger.LogWarning($"Unabled to access {url}");
                     return;
                 }
                 
