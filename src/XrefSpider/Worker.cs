@@ -55,7 +55,7 @@ namespace XrefSpider
         /// <returns>Task to perform after the application host has started.</returns>
         public async Task OnStartedAsync()
         {
-            await _spider.CrawlAsync();
+            var xrefMap = await _spider.CrawlAsync();
 
             _appLifetime.StopApplication();
         }

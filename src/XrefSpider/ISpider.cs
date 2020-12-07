@@ -11,6 +11,6 @@ namespace XrefSpider
         /// Crawls the documentation and creates the xref map.
         /// </summary>
         /// <returns>Task that crawls the documentation.</returns>
-        public Task CrawlAsync();
+        public Task<string> CrawlAsync();
     }
 }

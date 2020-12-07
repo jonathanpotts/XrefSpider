@@ -5,7 +5,7 @@ namespace XrefSpider
 {
     public class DocFXSpider : ISpider
     {
-        public Task CrawlAsync()
+        public Task<string> CrawlAsync()
         {
             throw new NotImplementedException();
         }

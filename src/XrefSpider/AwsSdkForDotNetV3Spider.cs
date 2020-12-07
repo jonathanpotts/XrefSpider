@@ -61,7 +61,7 @@ namespace XrefSpider
         /// Crawls the documentation and creates the xref map.
         /// </summary>
         /// <returns>Task that crawls the documentation.</returns>
-        public async Task CrawlAsync()
+        public async Task<string> CrawlAsync()
         {
             var docsUri = new Uri(_docsUrl);
             var tocUrl = new Uri(docsUri, _tocPage).ToString();
@@ -88,8 +88,7 @@ namespace XrefSpider
                 .Build();
             var yaml = ser.Serialize(_xrefs);
 
-            Console.WriteLine();
-            Console.Write(yaml);
+            return yaml;
         }
         
         /// <summary>
@@ -141,56 +140,139 @@ namespace XrefSpider
                 return;
             }
 
-            var name = pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText;
-            string fullName = null;
+            Xref xref = null;
 
-            if (pageType is PageType.Class or PageType.Interface or PageType.Enumeration)
+            if (pageType is PageType.Namespace)
             {
-                fullName = pageDoc.DocumentNode
+                var uniqueId = pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText;
+
+                xref = new()
+                {
+                    UniqueId = uniqueId,
+                    Name = uniqueId,
+                    Url = url,
+                    CommentId = $"N:{uniqueId}",
+                    NameWithType = uniqueId
+                };
+            }
+            else if (pageType is PageType.Class or PageType.Interface or PageType.Enumeration)
+            {
+                var uniqueId = pageDoc.DocumentNode
+                        .Descendants()
+                        .SkipWhile(x => x.Id != "inheritancehierarchy")
+                        .First(x => x.Name == "div")
+                        .Descendants()
+                        .Reverse()
+                        .SkipWhile(x => x.Name != "br")
+                        .First(x => x.Name == "#text")
+                        .InnerText
+                        .Replace("\n", "")
+                        .Replace("&nbsp;", "");
+
+                var name = pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText;
+
+                xref = new()
+                {
+                    UniqueId = uniqueId,
+                    Name = name,
+                    Url = url,
+                    CommentId = $"T:{uniqueId}",
+                    FullName = uniqueId,
+                    NameWithType = name
+                };
+            }
+            else if (pageType is PageType.Constructor or PageType.Method)
+            {                
+                var @namespace = pageDoc.GetElementbyId("namespaceblock").Descendants().SkipWhile(x => x.Name != "strong").ElementAt(2).InnerText;
+                var methodName = pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText.Replace(" ", "");
+
+                if (methodName.Contains('('))
+                {
+                    methodName = methodName.Substring(0, methodName.IndexOf('('));
+                }
+
+                var parameterTypes = pageDoc.DocumentNode
                     .Descendants()
-                    .SkipWhile(x => x.Id != "inheritancehierarchy")
-                    .First(x => x.Name == "div")
-                    .Descendants()
-                    .Reverse()
-                    .SkipWhile(x => x.Name != "br")
-                    .First(x => x.Name == "#text")
-                    .InnerText
-                    .Replace("\n", "")
-                    .Replace("&nbsp;", "");
+                    .SkipWhile(x => x.Id != "parameters")
+                    .FirstOrDefault()?
+                    .ParentNode
+                    .Descendants("dl")
+                    .Select(x => x.Descendants("dd").First().InnerText.Replace("\n", "")["Type: ".Length..])
+                    ?? Enumerable.Empty<string>();
+
+                var parameterList = string.Join(", ", parameterTypes);
+
+                var fullName = $"{@namespace}.{methodName}({parameterList})";
+
+                string uniqueId;
+
+                if (pageType is PageType.Constructor)
+                {
+                    uniqueId = $"{@namespace}.{methodName}.#ctor({parameterList})";
+                }
+                else
+                {
+                    uniqueId = fullName;
+                }
+
+                uniqueId = uniqueId.Replace("()", "");
+
+                parameterList = string.Join(", ", parameterTypes.Select(x => x.Split('.').Last()));
+
+                var nameWithType = $"{methodName}({parameterList})";
+
+                var name = nameWithType.Split('.').Last();
+
+                xref = new()
+                {
+                    UniqueId = uniqueId,
+                    Name = name,
+                    Url = url,
+                    CommentId = $"M:{uniqueId}",
+                    FullName = fullName,
+                    NameWithType = nameWithType
+                };
             }
 
-            var uniqueId = pageType switch
+            if (xref is null)
             {
-                PageType.Namespace => name,
-                PageType.Class or PageType.Interface or PageType.Enumeration or PageType.Method => fullName,
-                _ => null
-            };
-
-            var commentId = pageType switch
-            {
-                PageType.Namespace => $"N:{uniqueId}",
-                PageType.Class or PageType.Interface or PageType.Enumeration => $"T:{uniqueId}",
-                PageType.Method or PageType.Constructor => $"M:{uniqueId}",
-                _ => null
-            };
-
-            var nameWithType = pageType switch
-            {
-                PageType.Namespace or PageType.Class or PageType.Interface or PageType.Enumeration => name,
-                _ => null
-            };
-
-            Xref xref = new()
-            {
-                UniqueId = uniqueId,
-                Name = name,
-                Url = url,
-                CommentId = commentId,
-                FullName = fullName,
-                NameWithType = nameWithType
-            };
+                return;
+            }
 
             _xrefs.Add(xref);
+
+            if (pageType is PageType.Class or PageType.Interface)
+            {
+                var pageUri = new Uri(url);
+
+                var constructorUrls = pageDoc.DocumentNode
+                    .Descendants()
+                    .SkipWhile(x => x.Id != "constructors")
+                    .FirstOrDefault(x => x.Name == "div")?
+                    .Descendants("tr")
+                    .Select(x => x.Descendants("td").Skip(1).FirstOrDefault()?.Descendants("a").FirstOrDefault()?.GetAttributeValue("href", null))
+                    .Where(x => !string.IsNullOrEmpty(x))
+                    .Select(x => new Uri(pageUri, x).ToString());
+
+                foreach (var constructorUrl in constructorUrls ?? Enumerable.Empty<string>())
+                {
+                    await CrawlPageAsync(constructorUrl);
+                }
+
+                var methodUrls = pageDoc.DocumentNode
+                    .Descendants()
+                    .SkipWhile(x => x.Id != "methods")
+                    .FirstOrDefault(x => x.Name == "div")?
+                    .Descendants("tr")
+                    .Select(x => x.Descendants("td").Skip(1).FirstOrDefault()?.Descendants("a").FirstOrDefault()?.GetAttributeValue("href", null))
+                    .Where(x => !string.IsNullOrEmpty(x))
+                    .Select(x => new Uri(pageUri, x).ToString());
+
+                foreach (var methodUrl in methodUrls ?? Enumerable.Empty<string>())
+                {
+                    await CrawlPageAsync(methodUrl);
+                }
+            }
         }
     }
 }
