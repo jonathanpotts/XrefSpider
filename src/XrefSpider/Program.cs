@@ -17,7 +17,7 @@ namespace XrefSpider
             "Used to crawl API documentation sites to create xref maps to use with DocFX and other consumers.\n" +
             "\n" +
             "Usage:\n" +
-            "XrefSpider [--docfx|-d] [--awssdk|-a] output-file\n";
+            "XrefSpider [--awssdk|-a] output-file\n";
 
         public static async Task Main(string[] args)
         {
@@ -33,23 +33,6 @@ namespace XrefSpider
                     var logger = services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
 
                     bool spiderSet = false;
-
-                    if (args.Contains("--docfx") && args.Contains("-d"))
-                    {
-                        logger.LogError("For DocFX, you must specify --docfx or -d but not both.");
-                        Environment.Exit(-1);
-                    }
-                    else if (args.Contains("--docfx") || args.Contains("-d"))
-                    {
-                        if (spiderSet)
-                        {
-                            logger.LogError("There are too many spiders specified.");
-                            Environment.Exit(-1);
-                        }
-
-                        services.AddHttpClient<ISpider, DocFXSpider>();
-                        spiderSet = true;
-                    }
 
                     if (args.Contains("--awssdk") && args.Contains("-a"))
                     {
@@ -77,7 +60,7 @@ namespace XrefSpider
                         Environment.Exit(-1);
                     }
 
-                    var fileName = args.SingleOrDefault(x => x is not ("--docfx" or "-d" or "--awssdk" or "-a"));
+                    var fileName = args.SingleOrDefault(x => x is not ("--awssdk" or "-a"));
 
                     if (fileName is null)
                     {
