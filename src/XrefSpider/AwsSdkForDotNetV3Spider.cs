@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Net;
 using System.Net.Http;
+using System.Web;
 using XrefSpider.Models;
 using YamlDotNet.Serialization;
 using Microsoft.Extensions.Logging;
@@ -165,19 +166,18 @@ namespace XrefSpider
             }
             else if (pageType is PageType.Class or PageType.Interface or PageType.Enumeration)
             {
-                var uniqueId = pageDoc.DocumentNode
-                        .Descendants()
-                        .SkipWhile(x => x.Id != "inheritancehierarchy")
-                        .First(x => x.Name == "div")
-                        .Descendants()
-                        .Reverse()
-                        .SkipWhile(x => x.Name != "br")
-                        .First(x => x.Name == "#text")
-                        .InnerText
-                        .Replace("\n", "")
-                        .Replace("&nbsp;", "");
+                var uniqueId = HttpUtility.HtmlDecode(pageDoc.DocumentNode
+                    .Descendants()
+                    .SkipWhile(x => x.Id != "inheritancehierarchy")
+                    .First(x => x.Name == "div")
+                    .Descendants()
+                    .Reverse()
+                    .SkipWhile(x => x.Name != "br")
+                    .First(x => x.Name == "#text")
+                    .InnerText)
+                    .Replace(" ", "");
 
-                var name = pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText;
+                var name = HttpUtility.HtmlDecode(pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText);
 
                 xref = new()
                 {
@@ -191,21 +191,17 @@ namespace XrefSpider
             }
             else if (pageType is PageType.Constructor or PageType.Method)
             {                
-                var @namespace = pageDoc.GetElementbyId("namespaceblock").Descendants().SkipWhile(x => x.Name != "strong").ElementAt(2).InnerText;
-                var methodName = pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText.Replace(" ", "");
+                var @namespace = HttpUtility.HtmlDecode(
+                    pageDoc.GetElementbyId("namespaceblock").Descendants().SkipWhile(x => x.Name != "strong").ElementAt(2).InnerText
+                    );
+                var methodName = HttpUtility.HtmlDecode(
+                    pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText.Replace(" ", "")
+                    );
 
                 if (methodName.Contains('('))
                 {
                     methodName = methodName.Substring(0, methodName.IndexOf('('));
                 }
-
-                var parameterNodes = pageDoc.DocumentNode
-                    .Descendants()
-                    .SkipWhile(x => x.Id != "parameters")
-                    .FirstOrDefault()?
-                    .ParentNode
-                    .Descendants("dl")
-                    .Select(x => x.Descendants("dd").First());
 
                 var parameterTypes = pageDoc.DocumentNode
                     .Descendants()
@@ -213,23 +209,16 @@ namespace XrefSpider
                     .FirstOrDefault()?
                     .ParentNode
                     .Descendants("dl")
-                    .Select(x => x.Descendants("dd").First().InnerText.Split('\n')[1]["Type: ".Length..])
+                    .Select(x => HttpUtility.HtmlDecode(x.Descendants("dd").First().InnerText).Split('\n')[1]["Type: ".Length..])
                     ?? Enumerable.Empty<string>();
 
                 var parameterList = string.Join(", ", parameterTypes);
 
                 var fullName = $"{@namespace}.{methodName}({parameterList})";
 
-                string uniqueId;
-
-                if (pageType is PageType.Constructor)
-                {
-                    uniqueId = $"{@namespace}.{methodName}.#ctor({parameterList})";
-                }
-                else
-                {
-                    uniqueId = fullName;
-                }
+                var uniqueId = (pageType is PageType.Constructor) ? 
+                    $"{@namespace}.{methodName}.#ctor({parameterList})" :
+                    fullName;
 
                 uniqueId = uniqueId.Replace("()", "");
 
