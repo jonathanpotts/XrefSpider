@@ -167,15 +167,16 @@ namespace XrefSpider
             else if (pageType is PageType.Class or PageType.Interface or PageType.Enumeration)
             {
                 var uniqueId = string.Concat(
-                    HttpUtility.HtmlDecode(pageDoc.DocumentNode
-                    .Descendants()
-                    .SkipWhile(x => x.Id != "inheritancehierarchy")
-                    .First(x => x.Name == "div")
-                    .Descendants()
-                    .Reverse()
-                    .SkipWhile(x => x.Name != "br")
-                    .First(x => x.Name == "#text")
-                    .InnerText
+                    HttpUtility.HtmlDecode(
+                        pageDoc.DocumentNode
+                        .Descendants()
+                        .SkipWhile(x => x.Id != "inheritancehierarchy")
+                        .First(x => x.Name == "div")
+                        .Descendants()
+                        .Reverse()
+                        .SkipWhile(x => x.Name != "br")
+                        .First(x => x.Name == "#text")
+                        .InnerText
                     ).Where(x => !char.IsWhiteSpace(x))
                     );
 
@@ -196,8 +197,9 @@ namespace XrefSpider
                 var @namespace = HttpUtility.HtmlDecode(
                     pageDoc.GetElementbyId("namespaceblock").Descendants().SkipWhile(x => x.Name != "strong").ElementAt(2).InnerText
                     );
-                var methodName = string.Concat(HttpUtility.HtmlDecode(
-                    pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText
+                var methodName = string.Concat(
+                    HttpUtility.HtmlDecode(
+                        pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText
                     ).Where(x => !char.IsWhiteSpace(x))
                     );
 
