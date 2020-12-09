@@ -166,7 +166,8 @@ namespace XrefSpider
             }
             else if (pageType is PageType.Class or PageType.Interface or PageType.Enumeration)
             {
-                var uniqueId = HttpUtility.HtmlDecode(pageDoc.DocumentNode
+                var uniqueId = string.Concat(
+                    HttpUtility.HtmlDecode(pageDoc.DocumentNode
                     .Descendants()
                     .SkipWhile(x => x.Id != "inheritancehierarchy")
                     .First(x => x.Name == "div")
@@ -174,8 +175,9 @@ namespace XrefSpider
                     .Reverse()
                     .SkipWhile(x => x.Name != "br")
                     .First(x => x.Name == "#text")
-                    .InnerText)
-                    .Replace(" ", "");
+                    .InnerText
+                    ).Where(x => !char.IsWhiteSpace(x))
+                    );
 
                 var name = HttpUtility.HtmlDecode(pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText);
 
@@ -194,8 +196,9 @@ namespace XrefSpider
                 var @namespace = HttpUtility.HtmlDecode(
                     pageDoc.GetElementbyId("namespaceblock").Descendants().SkipWhile(x => x.Name != "strong").ElementAt(2).InnerText
                     );
-                var methodName = HttpUtility.HtmlDecode(
-                    pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText.Replace(" ", "")
+                var methodName = string.Concat(HttpUtility.HtmlDecode(
+                    pageDoc.GetElementbyId("titles").Descendants("h1").First().InnerText
+                    ).Where(x => !char.IsWhiteSpace(x))
                     );
 
                 if (methodName.Contains('('))
