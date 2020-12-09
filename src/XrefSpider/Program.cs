@@ -17,7 +17,7 @@ namespace XrefSpider
             "Used to crawl API documentation sites to create xref maps to use with DocFX and other consumers.\n" +
             "\n" +
             "Usage:\n" +
-            "XrefSpider [--awssdk|-a] output-file\n";
+            "XrefSpider [--awssdk|-a] [--unity|-u] output-file\n";
 
         public static async Task Main(string[] args)
         {
@@ -47,6 +47,22 @@ namespace XrefSpider
                         }
 
                         services.AddHttpClient<ISpider, AwsSdkForDotNetV3Spider>();
+                        spiderSet = true;
+                    }
+
+                    if (args.Contains("--unity") && args.Contains("-u"))
+                    {
+                        logger.LogError("For Unity, you must specify --unity or -u but not both.");
+                    }
+                    else if (args.Contains("--unity") || args.Contains("-u"))
+                    {
+                        if (spiderSet)
+                        {
+                            logger.LogError("There are too many spiders specified.");
+                            Environment.Exit(-1);
+                        }
+
+                        services.AddHttpClient<ISpider, UnitySpider>();
                         spiderSet = true;
                     }
 
