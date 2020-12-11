@@ -76,7 +76,7 @@ namespace XrefSpider
                         Environment.Exit(-1);
                     }
 
-                    var fileName = args.SingleOrDefault(x => x is not ("--awssdk" or "-a"));
+                    var fileName = args.SingleOrDefault(x => x is not ("--awssdk" or "-a" or "--unity" or "-u"));
 
                     if (fileName is null)
                     {

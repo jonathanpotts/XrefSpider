@@ -32,6 +32,12 @@ namespace XrefSpider.Models
         public string CommentId { get; set; }
 
         /// <summary>
+        /// Is spec.
+        /// </summary>
+        [YamlMember(Alias = "isSpec", SerializeAs = typeof(string))]
+        public bool? IsSpec { get; set; }
+
+        /// <summary>
         /// Full name.
         /// </summary>
         [YamlMember(Alias = "fullName")]

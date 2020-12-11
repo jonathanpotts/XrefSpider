@@ -1,14 +1,13 @@
 ﻿using HtmlAgilityPack;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Web;
 using XrefSpider.Models;
 using YamlDotNet.Serialization;
-using Microsoft.Extensions.Logging;
 
 namespace XrefSpider
 {
@@ -99,7 +98,7 @@ namespace XrefSpider
 
             return yaml;
         }
-        
+
         /// <summary>
         /// Enumeration of AWS SDK for .NET V3 documentation page types.
         /// </summary>
@@ -132,18 +131,14 @@ namespace XrefSpider
 
             if (!response.IsSuccessStatusCode)
             {
-                if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
-                {
-                    _logger.LogWarning($"Unabled to access {url}");
-                    return;
-                }
-                
+                _logger.LogWarning($"Unabled to access {url}");
+                return;
             }
 
             var pageHtml = await response.Content.ReadAsStringAsync();
             var pageDoc = new HtmlDocument();
             pageDoc.LoadHtml(pageHtml);
-            
+
             if (!Enum.TryParse<PageType>(pageDoc.GetElementbyId("titles").Descendants("h2").First().InnerText, out var pageType))
             {
                 return;
@@ -193,7 +188,7 @@ namespace XrefSpider
                 };
             }
             else if (pageType is PageType.Constructor or PageType.Method)
-            {                
+            {
                 var @namespace = HttpUtility.HtmlDecode(
                     pageDoc.GetElementbyId("namespaceblock").Descendants().SkipWhile(x => x.Name != "strong").ElementAt(2).InnerText
                     );
@@ -221,7 +216,7 @@ namespace XrefSpider
 
                 var fullName = $"{@namespace}.{methodName}({parameterList})";
 
-                var uniqueId = (pageType is PageType.Constructor) ? 
+                var uniqueId = (pageType is PageType.Constructor) ?
                     $"{@namespace}.{methodName}.#ctor({parameterList})" :
                     fullName;
 
